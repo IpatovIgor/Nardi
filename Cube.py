@@ -2,6 +2,9 @@ import pygame
 import random
 
 class Cube:
+    def __init__(self):
+        self.imageE = pygame.transform.scale(pygame.image.load("imeges/E.png"), (60, 50))
+
     cube_list = [pygame.transform.scale(pygame.image.load("imeges/куб1.png"), (30, 30)),
                  pygame.transform.scale(pygame.image.load("imeges/куб2.png"), (30, 30)),
                  pygame.transform.scale(pygame.image.load("imeges/куб3.png"), (30, 30)),
@@ -21,11 +24,16 @@ class Cube:
             screen.blit(stac, (100, 100 + (-1) ** i * 10))
             pygame.display.update()
             clock.tick(15)
-        return random.randint(0, 5), random.randint(0, 5)
+        first, second = random.randint(1, 6), random.randint(1, 6)
+        self.firstCube = first - 1
+        self.secondCube = second - 1
+        return [first, second]
 
     firstCube = 0
     secondCube = 0
 
-    def prinCube(self, screen):
+    def prinCube(self, screen, was_thrown):
         screen.blit(self.cube_list[self.firstCube], (110, 110))
         screen.blit(self.cube_list[self.secondCube], (110, 160))
+        if not was_thrown:
+            screen.blit(self.imageE, (260, 540))
