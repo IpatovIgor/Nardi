@@ -1,4 +1,5 @@
 from Game import *
+from GameControl import *
 
 
 def start_menu():
