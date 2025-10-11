@@ -1,26 +1,28 @@
-import pygame
-import random
 import math
 from Cube import *
 
 
-def reset_all():
-    global moveIsGoing
-    global moveColor
-    global baseList
-    global cubes_num
-    global move_index
-    global cubs_was_trow
-    global count_of_black
-    global count_of_white
-    moveIsGoing = False
-    moveColor = "Black"
-    baseList = []
-    cubes_num = [1, 1]
-    move_index = 0
-    cubs_was_trow = False
-    count_of_black = 0
-    count_of_white = 0
+class GameState:
+    def __init__(self):
+        self.move_is_going = False
+        self.move_color = "Black"
+        self.baseList = []
+        self.cubes_num = [1, 1]
+        self.move_index = 0
+        self.cubs_was_trow = False
+        self.count_of_black = 0
+        self.count_of_white = 0
+        self.screen = None
+        self.clock = None
+
+
+def change_move(game_state):
+    game_state.move_index = 0
+    game_state.cubs_was_trow = False
+    if game_state.move_color == "Black":
+        game_state.move_color = "White"
+    else:
+        game_state.move_color = "Black"
 
 
 class SkipButton:
@@ -31,89 +33,114 @@ class SkipButton:
         self.rect = self.image.get_rect(topleft=(0, 0))
         self.state = "Small"
 
-    def check_mouse(self):
-        global moveIsGoing
-        global move_index
-        global moveColor
-        global cubs_was_trow
+    def check_mouse(self, game_state):
         self.image = self.small_image
         self.state = "Small"
         mouse = pygame.mouse.get_pos()
-        if self.rect.collidepoint(mouse) and self.state == "Small" and not moveIsGoing:
+        if self.rect.collidepoint(mouse) and self.state == "Small" and not game_state.move_is_going:
             self.image = self.big_image
             self.state = "Big"
-        if self.rect.collidepoint(mouse) and pygame.mouse.get_pressed()[0] and cubs_was_trow:
-            move_index = 0
-            cubs_was_trow = False
-            if moveColor == "Black":
-                moveColor = "White"
-            else:
-                moveColor = "Black"
-        self.print_button()
+        if self.rect.collidepoint(mouse) and pygame.mouse.get_pressed()[0] and game_state.cubs_was_trow:
+            change_move(game_state)
+        self.print_button(game_state)
 
-    def print_button(self):
-        global screen
-        screen.blit(self.image, (0, 0))
+    def print_button(self, game_state):
+        game_state.screen.blit(self.image, (0, 0))
 
 
-def can_move(washser, count, index_of_base):
-    global moveIsGoing
-    global baseList
-    global move_index
-    global cubes_num
-    global moveColor
-    global cubs_was_trow
-    global count_of_black
-    global count_of_white
-
-    if washser.color == "Black":
-        save_base = baseList[0]
+def remove_from_game(game_state, washer: 'Washer'):
+    washer.base.pop_washer()
+    if game_state.move_color == "Black":
+        game_state.count_of_black += 1
     else:
-        save_base = baseList[25]
+        game_state.count_of_white += 1
+    game_state.move_index += 1
+    if game_state.move_index == 2:
+        change_move(game_state)
+
+
+def can_move(game_state, washer, count, index_of_base):
+    if not _check_basic_conditions(game_state, washer):
+        return False
+
+    if not _check_board_bounds(game_state, washer, count, index_of_base):
+        return False
+
+    return _check_target_base(game_state, washer, count, index_of_base)
+
+
+def _check_basic_conditions(game_state, washer):
+    if not _check_player_home(game_state, washer):
+        return False
+
+    if game_state.move_is_going:
+        return False
+
+    if washer.index + 1 != washer.base.count:
+        return False
+
+    return True
+
+
+def _check_player_home(game_state, washer):
+    if washer.color == "Black":
+        save_base = game_state.baseList[0]
+    else:
+        save_base = game_state.baseList[25]
 
     if save_base.count > 0:
-        if washser.base.num != save_base.num:
-            return False
+        return washer.base.num == save_base.num
 
-    if moveIsGoing:
-        return False
-
-    if washser.index + 1 != washser.base.count:
-        return False
-
-    if 1 > index_of_base + count or index_of_base + count > 24:
-        washser.base.pop_washer()
-        if moveColor == "Black":
-            count_of_black += 1
-        else:
-            count_of_white += 1
-        move_index += 1
-        if move_index == 2:
-            move_index = 0
-            cubs_was_trow = False
-            if moveColor == "Black":
-                moveColor = "White"
-            else:
-                moveColor = "Black"
-        return False
-
-    next_base = baseList[index_of_base + count]
-    if next_base.count > 1 and next_base.washers[0].color != washser.color:
-        return False
-    if next_base.count == 1 and next_base.washers[0].color != washser.color:
-        if next_base.washers[0].color == "Black":
-            save_base = baseList[0]
-        else:
-            save_base = baseList[25]
-        next_base.washers[0].base = save_base
-        next_base.washers[0].x = save_base.x
-        next_base.washers[0].y = save_base.y + 50 * save_base.count
-        next_base.washers[0].index = save_base.count
-        next_base.washers[0].whasher_rect = next_base.washers[0].image.get_rect(
-            topleft=(save_base.x, save_base.y + 50 * save_base.count))
-        save_base.addWasher(next_base.washers[0])
-        next_base.pop_washer()
     return True
+
+
+def _check_board_bounds(game_state, washer, count, index_of_base):
+    target_position = index_of_base + count
+
+    if 1 > target_position or target_position > 24:
+        remove_from_game(game_state, washer)
+        return False
+
+    return True
+
+
+def _check_target_base(game_state, washer, count, index_of_base):
+    target_position = index_of_base + count
+    next_base = game_state.baseList[target_position]
+
+    if next_base.count == 0 or next_base.washers[0].color == washer.color:
+        return True
+
+    if next_base.count == 1 and next_base.washers[0].color != washer.color:
+        _knock_opponent_washer(game_state, next_base)
+        return True
+
+    if next_base.count > 1 and next_base.washers[0].color != washer.color:
+        return False
+
+    return True
+
+
+def _knock_opponent_washer(game_state, next_base):
+    opponent_washer = next_base.washers[0]
+
+    if opponent_washer.color == "Black":
+        save_base = game_state.baseList[0]
+    else:
+        save_base = game_state.baseList[25]
+
+    set_param_for_knocked(game_state, next_base, save_base)
+
+
+def set_param_for_knocked(game_state, next_base, save_base):
+    next_base.washers[0].base = save_base
+    next_base.washers[0].x = save_base.x
+    next_base.washers[0].y = save_base.y + 50 * save_base.count
+    next_base.washers[0].index = save_base.count
+    next_base.washers[0].whasher_rect = next_base.washers[0].image.get_rect(
+        topleft=(save_base.x, save_base.y + 50 * save_base.count))
+    save_base.add_washer(next_base.washers[0])
+    next_base.pop_washer()
 
 
 class Washer:
@@ -122,20 +149,20 @@ class Washer:
     size = 50
     direction = 0
 
-    def __init__(self, type: str, x: int, y: int, base, index: int):
-        self.color = type
+    def __init__(self, color_type: str, x: int, y: int, base, index: int):
+        self.color = color_type
         self.index = index
-        if type == "Black":
+        if color_type == "Black":
             self.normalImage = pygame.transform.scale(pygame.image.load("imeges/ФишкаЧёрная.png"),
-                                                (self.size, self.size))
+                                                      (self.size, self.size))
             self.bigImage = pygame.transform.scale(pygame.image.load("imeges/ФишкаЧёрная.png"),
-                                                (self.size * 1.1, self.size * 1.1))
+                                                   (self.size * 1.1, self.size * 1.1))
             self.direction = 1
-        elif type == "White":
+        elif color_type == "White":
             self.normalImage = pygame.transform.scale(pygame.image.load("imeges/ФишкаБелая.png"),
-                                                (self.size, self.size))
+                                                      (self.size, self.size))
             self.bigImage = pygame.transform.scale(pygame.image.load("imeges/ФишкаБелая.png"),
-                                                (self.size * 1.1, self.size * 1.1))
+                                                   (self.size * 1.1, self.size * 1.1))
             self.direction = -1
         else:
             raise Exception("Неправильно указан цвет")
@@ -151,74 +178,60 @@ class Washer:
     index = -1
     nextBase = -1
 
-    def checkMousOnWasher(self, screen):
-        global moveIsGoing
-        global baseList
-        global cubes_num
-        global move_index
-        global cubs_was_trow
+    def check_mouse_on_washer(self, game_state):
         self.image = self.normalImage
         self.state = "Small"
-        if not cubs_was_trow:
+        if not game_state.cubs_was_trow:
             return
 
         mouse = pygame.mouse.get_pos()
-        if self.whasher_rect.collidepoint(mouse) and self.state == "Small" and not moveIsGoing:
+        if self.whasher_rect.collidepoint(mouse) and self.state == "Small" and not game_state.move_is_going:
             self.image = self.bigImage
             self.state = "Big"
 
-        if not moveIsGoing and self.whasher_rect.collidepoint(mouse) and pygame.mouse.get_pressed()[0]:
-            if can_move(self, cubes_num[move_index] * self.direction, self.base.num):
-                self.nextBase = baseList[(self.base.num
-                                          + cubes_num[move_index] * self.direction)]
-                moveIsGoing = True
-                self.changeBase(self.nextBase)
-                self.whasherIsGoing = True
-        if self.whasherIsGoing:
+        if not game_state.move_is_going and self.whasher_rect.collidepoint(mouse) and pygame.mouse.get_pressed()[0]:
+            if can_move(game_state, self, game_state.cubes_num[game_state.move_index] * self.direction, self.base.num):
+                self.nextBase = game_state.baseList[(self.base.num
+                                                     + game_state.cubes_num[game_state.move_index] * self.direction)]
+                game_state.move_is_going = True
+                self.change_base(self.nextBase)
+                self.whasher_is_going = True
+        if self.whasher_is_going:
             if self.nextBase.der == 'Down':
-                self.moveTo(self.nextBase.x, self.base.y + (self.nextBase.count - 1) * 50)
+                self.move_to(game_state, self.nextBase.x, self.base.y + (self.nextBase.count - 1) * 50)
             else:
-                self.moveTo(self.nextBase.x, self.base.y - (self.nextBase.count - 1) * 50)
+                self.move_to(game_state, self.nextBase.x, self.base.y - (self.nextBase.count - 1) * 50)
 
-    def changeBase(self, newBase):
+    def change_base(self, new_base):
         self.base.washers.pop(-1)
         self.base.count -= 1
-        self.index = len(newBase.washers)
-        self.base = newBase
-        self.base.addWasher(self)
+        self.index = len(new_base.washers)
+        self.base = new_base
+        self.base.add_washer(self)
 
-    def printWasher(self, screen):
-        global moveIsGoing
-        if moveColor == self.color:
-            self.checkMousOnWasher(screen)
-        screen.blit(self.image, (self.x, self.y))
+    def print_washer(self, game_state):
+        if game_state.move_color == self.color:
+            self.check_mouse_on_washer(game_state)
+        game_state.screen.blit(self.image, (self.x, self.y))
 
-    whasherIsGoing = False
+    whasher_is_going = False
 
-    def moveTo(self, nextX, nextY):
-        global moveIsGoing
-        global cubes_num
-        global move_index
-
-        deltaX = nextX - self.x
-        deltaY = nextY - self.y
-        length = math.sqrt(deltaX ** 2 + deltaY ** 2) / 5
+    def move_to(self, game_state, next_x, next_y):
+        delta_x = next_x - self.x
+        delta_y = next_y - self.y
+        length = math.sqrt(delta_x ** 2 + delta_y ** 2) / 5
         if length / 2 == 0:
-            print(cubes_num[move_index])
+            print(game_state.cubes_num[game_state.move_index])
             raise Exception("0")
-        deltaX /= length
-        deltaY /= length
-        self.x, self.y = self.x + deltaX, self.y + deltaY
+        delta_x /= length
+        delta_y /= length
+        self.x, self.y = self.x + delta_x, self.y + delta_y
         if length < 1:
-            self.x, self.y = nextX, nextY
+            self.x, self.y = next_x, next_y
         self.whasher_rect = self.image.get_rect(topleft=(self.x, self.y))
-        if self.x == nextX and self.y == nextY:
-            moveIsGoing = False
-            self.whasherIsGoing = False
-
-
-moveIsGoing = False
-moveColor = "Black"
+        if self.x == next_x and self.y == next_y:
+            game_state.move_is_going = False
+            self.whasher_is_going = False
 
 
 class Base:
@@ -226,20 +239,19 @@ class Base:
     y = 0
     count = 0
 
-    def __init__(self, x, y, num, der):
+    def __init__(self, game_state, x, y, num, der):
         self.num = num
         self.der = der
-        global baseList
-        baseList.append(self)
-        self.baseList = baseList
+        game_state.baseList.append(self)
+        self.baseList = game_state.baseList
         self.x, self.y = x, y
         self.washers = []
 
-    def printWashers(self, screen):
+    def print_washers(self, game_state):
         for washer in self.washers:
-            washer.printWasher(screen)
+            washer.print_washer(game_state)
 
-    def addWasher(self, washer):
+    def add_washer(self, washer):
         self.washers.append(washer)
         self.count += 1
 
@@ -248,103 +260,115 @@ class Base:
         self.count -= 1
 
 
-baseList = []
-cubes_num = [1, 1]
-
-
-def init_bases():
-    global baseList
-    Base(530, 0, 0, "Down")
+def init_bases(game_state):
+    Base(game_state, 530, 0, 0, "Down")
 
     for i in range(6):
-        Base(505 - 39 * i, 500, i + 1, "Up")
+        Base(game_state, 505 - 39 * i, 500, i + 1, "Up")
     for i in range(6):
-        Base(240 - 39 * i, 500, 7 + i, "Up")
+        Base(game_state, 240 - 39 * i, 500, 7 + i, "Up")
     for i in range(6):
-        Base(43 + 39 * i, 48, 13 + i, "Down")
+        Base(game_state, 43 + 39 * i, 48, 13 + i, "Down")
     for i in range(6):
-        Base(310 + 39 * i, 48, 19 + i, "Down")
+        Base(game_state, 310 + 39 * i, 48, 19 + i, "Down")
     for i in range(2):
-        baseList[1].addWasher(Washer("Black", 505, 500 - 50 * i, baseList[1], i))
-        baseList[24].addWasher(Washer("White", 310 + 39 * 5, 48 + 50 * i, baseList[24], i))
+        game_state.baseList[1].add_washer(Washer("Black", 505, 500 - 50 * i, game_state.baseList[1], i))
+        game_state.baseList[24].add_washer(Washer("White", 310 + 39 * 5, 48 + 50 * i, game_state.baseList[24], i))
     for i in range(5):
-        baseList[6].addWasher(Washer("White", 505 - 39 * 5, 500 - 50 * i, baseList[6], i))
-        baseList[19].addWasher(Washer("Black", 310, 48 + 50 * i, baseList[19], i))
-        baseList[12].addWasher(Washer("Black", 240 - 39 * 5, 500 - 50 * i, baseList[12], i))
-        baseList[13].addWasher(Washer("White", 43, 48 + 50 * i, baseList[13], i))
+        game_state.baseList[6].add_washer(Washer("White", 505 - 39 * 5, 500 - 50 * i, game_state.baseList[6], i))
+        game_state.baseList[19].add_washer(Washer("Black", 310, 48 + 50 * i, game_state.baseList[19], i))
+        game_state.baseList[12].add_washer(Washer("Black", 240 - 39 * 5, 500 - 50 * i, game_state.baseList[12], i))
+        game_state.baseList[13].add_washer(Washer("White", 43, 48 + 50 * i, game_state.baseList[13], i))
     for i in range(3):
-        baseList[8].addWasher(Washer("White", 240 - 39, 500 - 50 * i, baseList[8], i))
-        baseList[17].addWasher(Washer("Black", 43 + 39 * 4, 48 + 50 * i, baseList[17], i))
-    Base(0, 20, 25, "Down")
-
-
-move_index = 0
-cubs_was_trow = False
-count_of_black = 0
-count_of_white = 0
+        game_state.baseList[8].add_washer(Washer("White", 240 - 39, 500 - 50 * i, game_state.baseList[8], i))
+        game_state.baseList[17].add_washer(Washer("Black", 43 + 39 * 4, 48 + 50 * i, game_state.baseList[17], i))
+    Base(game_state, 0, 20, 25, "Down")
 
 
 def start_game(my_screen, my_clock):
-    global cubes_num
-    global screen
-    global clock
-    global cubs_was_trow
-    global baseList
-    global moveColor
-    global moveIsGoing
-    global move_index
-    global count_of_black
-    global count_of_white
-    screen = my_screen
-    clock = my_clock
-    reset_all()
+    game_state = GameState()
+    game_state.screen = my_screen
+    game_state.clock = my_clock
+    return main_game_loop(game_state)
+
+
+def initialize_game(game_state):
     dec = pygame.transform.scale(
         pygame.image.load("imeges/доскаДляНардов.png"),
         (600, 600))
-    running = True
     cube = Cube()
-    init_bases()
+    init_bases(game_state)
     skip_butt = SkipButton()
-    wasMove = False
+    was_move = False
+    return dec, cube, skip_butt, was_move
+
+
+def handle_events(game_state, cube):
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            quit()
+
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_e] and not game_state.cubs_was_trow:
+            game_state.cubes_num = cube.throw_cubs(game_state.screen, game_state.clock)
+            game_state.cubs_was_trow = True
+        if keys[pygame.K_ESCAPE]:
+            return "None"
+    return None
+
+
+def check_game_over(game_state):
+    if game_state.count_of_black >= 1 and not game_state.move_is_going:
+        return "Black"
+    if game_state.count_of_white >= 1 and not game_state.move_is_going:
+        return "White"
+    return None
+
+
+def update_game_state(game_state, was_move):
+    new_was_move = was_move
+
+    if game_state.move_is_going and not was_move:
+        new_was_move = True
+    elif not game_state.move_is_going and was_move:
+        new_was_move = False
+        game_state.move_index += 1
+        if game_state.move_index == 2:
+            game_state.move_index = 0
+            if game_state.move_color == "Black":
+                game_state.move_color = "White"
+            else:
+                game_state.move_color = "Black"
+            game_state.cubs_was_trow = False
+    return new_was_move
+
+
+def render_game(game_state, dec, skip_butt, cube):
+    game_state.screen.blit(dec, (0, 0))
+    skip_butt.check_mouse(game_state)
+
+    for base in game_state.baseList:
+        base.print_washers(game_state)
+
+    cube.prin_cube(game_state.screen, game_state.cubs_was_trow)
+    pygame.display.update()
+
+
+def main_game_loop(game_state):
+    dec, cube, skip_butt, was_move = initialize_game(game_state)
+
+    running = True
     while running:
-        screen.blit(dec, (0, 0))
-        skip_butt.check_mouse()
+        result = handle_events(game_state, cube)
+        if result is not None:
+            return result
 
-        if count_of_black >= 1 and not moveIsGoing:
-            return "Black"
-        if count_of_white >= 1 and not moveIsGoing:
-            return "White"
+        game_over_result = check_game_over(game_state)
+        if game_over_result is not None:
+            return game_over_result
 
-        if moveIsGoing and wasMove is False:
-            wasMove = True
-        elif not moveIsGoing and wasMove is True:
-            wasMove = False
-            move_index += 1
-            if move_index == 2:
-                move_index = 0
-                if moveColor == "Black":
-                    moveColor = "White"
-                else:
-                    moveColor = "Black"
-                cubs_was_trow = False
-
-        for base in baseList:
-            base.printWashers(screen)
-        cube.prinCube(screen, cubs_was_trow)
-        pygame.display.update()
-        for event in pygame.event.get():
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_e] and not cubs_was_trow:
-                cubes_num = cube.throw_cubs(screen, clock)
-                cubs_was_trow = True
-            if keys[pygame.K_ESCAPE]:
-                return "None"
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                quit()
-
-        clock.tick(60)
-
-
-screen = -1
-clock = -1
+        was_move = update_game_state(game_state, was_move)
+        render_game(game_state, dec, skip_butt, cube)
+        game_state.clock.tick(60)
+    return "None"
