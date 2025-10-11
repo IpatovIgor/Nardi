@@ -310,9 +310,9 @@ def start_game(my_screen, my_clock):
         screen.blit(dec, (0, 0))
         skip_butt.check_mouse()
 
-        if count_of_black >= 7 and not moveIsGoing:
+        if count_of_black >= 1 and not moveIsGoing:
             return "Black"
-        if count_of_white >= 7 and not moveIsGoing:
+        if count_of_white >= 1 and not moveIsGoing:
             return "White"
 
         if moveIsGoing and wasMove is False:
