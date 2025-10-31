@@ -1,9 +1,12 @@
 import math
 from Cube import *
+from timer import *
 
 
 class GameState:
     def __init__(self):
+        self.timer = GameTimer()
+        self.font = pygame.font.Font(None, 36)
         self.move_is_going = False
         self.move_color = "Black"
         self.baseList = []

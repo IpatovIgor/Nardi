@@ -1,6 +1,5 @@
-import pygame
-from Game import *
 from Initer import *
+from GameSaver import *
 
 
 def start_game(my_screen, my_clock):
@@ -16,6 +15,7 @@ def initialize_game(game_state):
         (600, 600))
     cube = Cube()
     init_bases(game_state)
+    restore_game(game_state)
     skip_butt = SkipButton()
     was_move = False
     return dec, cube, skip_butt, was_move
@@ -32,14 +32,17 @@ def handle_events(game_state, cube):
             game_state.cubes_num = cube.throw_cubs(game_state.screen, game_state.clock)
             game_state.cubs_was_trow = True
         if keys[pygame.K_ESCAPE]:
+            save(game_state)
             return "None"
     return None
 
 
 def check_game_over(game_state):
-    if game_state.count_of_black >= 1 and not game_state.move_is_going:
+    if game_state.timer.get_time() >= 30:
+        return "None"
+    if game_state.count_of_black >= 5 and not game_state.move_is_going:
         return "Black"
-    if game_state.count_of_white >= 1 and not game_state.move_is_going:
+    if game_state.count_of_white >= 5 and not game_state.move_is_going:
         return "White"
     return None
 
@@ -65,6 +68,13 @@ def update_game_state(game_state, was_move):
 def render_game(game_state, dec, skip_butt, cube):
     game_state.screen.blit(dec, (0, 0))
     skip_butt.check_mouse(game_state)
+
+    current_time = game_state.timer.get_time()
+    seconds = int(current_time % 60)
+    time_str = f"Время: {seconds:02d}"
+
+    time_surface = game_state.font.render(time_str, True, (255, 255, 255))
+    game_state.screen.blit(time_surface, (50, 20))
 
     for base in game_state.baseList:
         base.print_washers(game_state)
