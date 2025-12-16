@@ -249,3 +249,16 @@ init_bases(game_state) - создает и размещает все игров�
 
 Роль в проекте:
 Модуль выполняет роль "уровня дизайна" игры, определяя начальную конфигурацию игрового поля. Обеспечивает корректную подготовку игры к старту, создавая все необходимые объекты в правильных позициях.
+
+    for i in range(2):
+        game_state.baseList[1].add_washer(Washer("Black", 505, 510 - 50 * i, game_state.baseList[1], i))
+        game_state.baseList[24].add_washer(Washer("White", 320 + 37 * 5, 60 + 50 * i, game_state.baseList[24], i))
+    for i in range(5):
+        game_state.baseList[6].add_washer(Washer("White", 505 - 37 * 5, 510 - 50 * i, game_state.baseList[6], i))
+        game_state.baseList[19].add_washer(Washer("Black", 320, 60 + 50 * i, game_state.baseList[19], i))
+        game_state.baseList[12].add_washer(Washer("Black", 247 - 37 * 5, 510 - 50 * i, game_state.baseList[12], i))
+        game_state.baseList[13].add_washer(Washer("White", 60, 60 + 50 * i, game_state.baseList[13], i))
+    for i in range(3):
+        game_state.baseList[8].add_washer(Washer("White", 247 - 37, 510 - 50 * i, game_state.baseList[8], i))
+        game_state.baseList[17].add_washer(Washer("Black", 60 + 37 * 4, 60 + 50 * i, game_state.baseList[17], i))
+    Base(game_state, 0, 50, 25, "Down")

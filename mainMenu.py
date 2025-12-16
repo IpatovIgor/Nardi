@@ -1,4 +1,4 @@
-from Game import *
+from GameSaver import *
 from GameControl import *
 
 
@@ -9,6 +9,8 @@ def start_menu():
     back_ground = pygame.transform.scale(pygame.image.load("imeges/тюрьма.jpg"), (1280 // 2, 720))
     star_game_button = pygame.transform.scale(pygame.image.load("imeges/начатьИгру.png"), (448 * 0.6, 99 * 0.6))
     star_game_button_rect = star_game_button.get_rect(topleft=(180, 300))
+    restar_game_button = pygame.transform.scale(pygame.image.load("imeges/перезагурить.png"), (448 * 0.6, 99 * 0.6))
+    restart_game_rect = restar_game_button.get_rect(topleft=(180, 450))
     win_black_image = pygame.transform.scale(pygame.image.load("imeges/чёрные.jpg"), (720, 720))
     win_white_image = pygame.transform.scale(pygame.image.load("imeges/белые.jpg"), (720, 720))
     running = True
@@ -16,6 +18,7 @@ def start_menu():
         pygame.display.update()
         screen.blit(back_ground, (-20, -100))
         screen.blit(star_game_button, (180, 300))
+        screen.blit(restar_game_button, (180, 450))
 
         mouse = pygame.mouse.get_pos()
         if star_game_button_rect.collidepoint(mouse) and pygame.mouse.get_pressed()[0]:
@@ -24,6 +27,9 @@ def start_menu():
                 back_ground = win_black_image
             if win_color == "White":
                 back_ground = win_white_image
+
+        if restart_game_rect.collidepoint(mouse) and pygame.mouse.get_pressed()[0]:
+            over_write()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
